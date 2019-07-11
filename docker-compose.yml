@@ -1,0 +1,46 @@
+version: '2.1'
+services:
+  influxdb:
+    image: influxdb:1.7.7
+    container_name: influxdb
+    environment:
+      - INFLUXDB_DB=prometheus
+      - INFLUXDB_USER=admin
+      - INFLUXDB_USER_PASSWORD=admin
+    ports:
+      - 8086:8086
+    volumes:
+     - $PWD:/var/lib/influxdb
+    network_mode: 'host'
+
+  nodeexporter:
+    image: prom/node-exporter:v0.18.1
+    container_name: nodeexporter
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+    restart: unless-stopped
+    expose:
+      - 9100
+    labels:
+      org.label-schema.group: "monitoring"
+    network_mode: 'host'
+
+  prometheus:
+    image: prom/prometheus:v2.11.1
+    container_name: prometheus
+    ports:
+      - 9090:9090
+    volumes:
+     - $PWD:/tmp/prometheus
+    command: ['--config.file=/tmp/prometheus/prometheus.yml']
+    depends_on:
+      - influxdb
+      - nodeexporter
+    network_mode: 'host'
